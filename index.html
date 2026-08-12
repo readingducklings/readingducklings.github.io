@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Asset Cloner UI</title>
+    <style>
+        :root {
+            --bg-color: #121214;
+            --card-bg: #1a1a24;
+            --accent-color: #ff3333;
+            --text-color: #e2e8f0;
+            --success-color: #00ff66;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #2a2a36;
+            padding-bottom: 20px;
+        }
+        h2 { color: var(--accent-color); margin-bottom: 5px; }
+        .controls { margin-top: 15px; }
+        button {
+            padding: 12px 28px;
+            font-weight: bold;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: opacity 0.2s;
+        }
+        button:hover { opacity: 0.9; }
+        #status-bar {
+            margin: 15px auto;
+            max-width: 1200px;
+            background: #000;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: var(--success-color);
+        }
+        /* Dynamic Grid Layout */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        /* Card Layout Panels */
+        .file-card {
+            background-color: var(--card-bg);
+            border: 1px solid #2d2d3d;
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+        .file-card:hover { transform: translateY(-2px); }
+        .thumbnail-container {
+            width: 100%;
+            height: 140px;
+            background-color: #0a0a0f;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            margin-bottom: 12px;
+            border: 1px solid #222;
+        }
+        .thumbnail-container img {
+            width: auto;
+            height: 100%;
+            object-fit: contain;
+        }
+        .file-icon {
+            font-size: 3rem;
+            color: #555;
+            font-weight: bold;
+        }
+        .file-info {
+            flex-grow: 1;
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+        }
+        .file-name {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #fff;
+            word-break: break-all;
+            margin-bottom: 6px;
+        }
+        .file-path {
+            color: #8a8a9a;
+            word-break: break-all;
+            font-family: monospace;
+            background: #0f0f14;
+            padding: 4px 6px;
+            border-radius: 4px;
+        }
+        .dl-btn {
+            width: 100%;
+            padding: 8px;
+            background-color: #2b2b3d;
+            color: #fff;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .dl-btn:hover { background-color: var(--success-color); color: #000; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h2>DuckMath Live Target Extractor</h2>
+        <p>Automated deep-scanning framework with real-time UI grid card rendering.</p>
+        <div class="controls">
+            <button onclick="startScrape()">Launch Pipeline Scan</button>
+        </div>
+        <div id="status-bar">System Status: Idle... awaiting pipeline trigger.</div>
+    </header>
+
+    <!-- UI Storage Grid Structure -->
+    <div class="grid-container" id="asset-grid"></div>
+
+    <script>
+        const baseUrl = 'https://duckmath.org';
+        const proxyPrefix = 'https://corsproxy.io/?url=';
+        const scannedPaths = new Set();
+        
+        const assetGrid = document.getElementById('asset-grid');
+        const statusBar = document.getElementById('status-bar');
+
+        function updateStatus(text) {
+            statusBar.textContent = `System Status: ${text}`;
+        }
+
+        // Generates UI component box blocks cleanly upon reference validation
+        function createFileBox(fileName, fileUrl, rawData, isImage) {
+            const card = document.createElement('div');
+            card.className = 'file-card';
+
+            const thumbContainer = document.createElement('div');
+            thumbContainer.className = 'thumbnail-container';
+
+            if (isImage) {
+                const img = document.createElement('img');
+                img.src = fileUrl;
+                thumbContainer.appendChild(img);
+            } else {
+                const icon = document.createElement('div');
+                icon.className = 'file-icon';
+                const extension = fileName.split('.').pop().toUpperCase();
+                icon.textContent = extension || '{}';
+                thumbContainer.appendChild(icon);
+            }
+
+            const info = document.createElement('div');
+            info.className = 'file-info';
+            
+            const nameEl = document.createElement('div');
+            nameEl.className = 'file-name';
+            nameEl.textContent = fileName;
+
+            const pathEl = document.createElement('div');
+            pathEl.className = 'file-path';
+            pathEl.textContent = '/' + fileName;
+
+            info.appendChild(nameEl);
+            info.appendChild(pathEl);
+
+            const downloadBtn = document.createElement('button');
+            downloadBtn.className = 'dl-btn';
+            downloadBtn.textContent = 'Download Asset';
+            
+            // Programmatic single asset conversion script engine loop
+            downloadBtn.onclick = () => {
+                const blob = new Blob([rawData], { type: isImage ? 'image/png' : 'text/plain' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = fileName.split('/').pop();
+                link.click();
+            };
+
+            card.appendChild(thumbContainer);
+            card.appendChild(info);
+            card.appendChild(downloadBtn);
+            assetGrid.appendChild(card);
+        }
+
+        async function scanPath(relativeUrl) {
+            const cleanRelativeUrl = relativeUrl.replace(/^\//, '');
+            if (scannedPaths.has(cleanRelativeUrl)) return;
+            scannedPaths.add(cleanRelativeUrl);
+            
+            updateStatus(`Scanning file entry node: ${cleanRelativeUrl}`);
+            
+            try {
+                const finalAbsoluteUrl = `${baseUrl}/${cleanRelativeUrl}`;
+                const proxiedUrl = proxyPrefix + encodeURIComponent(finalAbsoluteUrl);
+                
+                const isImage = /\.(png|jpg|jpeg|svg|gif|ico)$/i.test(cleanRelativeUrl);
+                
+                const res = await fetch(proxiedUrl);
+                let rawData;
+                let text = '';
+
+                if (isImage) {
+                    rawData = await res.blob();
+                } else {
+                    rawData = await res.text();
+                    text = rawData;
+                }
+
+                // Generates the visual container panel natively into dashboard space
+                createFileBox(cleanRelativeUrl, proxiedUrl, rawData, isImage);
+
+                // If text code asset, run secondary inner attribute pass
+                if (!isImage) {
+                    const relativeRegex = /(?:href|src|path)=["']([^'"]+\.(?:js|css|png|jpg|jpeg|svg|json|ico))["']/g;
+                    let match;
+                    
+                    while ((match = relativeRegex.exec(text)) !== null) {
+                        const discoveredPath = match[1];
+                        if (!discoveredPath.startsWith('http') && !discoveredPath.startsWith('//') && !discoveredPath.startsWith('data:')) {
+                            // Yield thread priority to ensure interface box layout renders concurrently
+                            await new Promise(resolve => setTimeout(resolve, 50));
+                            await scanPath(discoveredPath);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error(`Fetch pipeline error on route: ${cleanRelativeUrl}`, err);
+            }
+        }
+
+        async function startScrape() {
+            assetGrid.innerHTML = '';
+            scannedPaths.clear();
+            updateStatus('Initializing connection parameters...');
+            await scanPath('index.html');
+            updateStatus('Pipeline Scan Completed completely.');
+        }
+    </script>
+</body>
+</html>
